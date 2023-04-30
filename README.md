@@ -1,6 +1,6 @@
 <a href="https://github.com/nvm-sh/logos"><img alt="nvm project logo" src="https://raw.githubusercontent.com/nvm-sh/logos/HEAD/nvm-logo-color.svg" height="50" /></a>
 
-# Node Version Manager [![Build Status](https://travis-ci.org/nvm-sh/nvm.svg?branch=master)][3] [![nvm version](https://img.shields.io/badge/version-v0.39.3-yellow.svg)][4] [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/684/badge)](https://bestpractices.coreinfrastructure.org/projects/684)
+# Node Version Manager [![Build Status](https://app.travis-ci.com/nvm-sh/nvm.svg?branch=master)][3] [![nvm version](https://img.shields.io/badge/version-v0.39.3-yellow.svg)][4] [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/684/badge)](https://bestpractices.coreinfrastructure.org/projects/684)
 
 <!-- To update this table of contents, ensure you have run `npm install` then `npm run doctoc` -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -599,8 +599,9 @@ cdnvm() {
         fi
     fi
 }
+
 alias cd='cdnvm'
-cd "$PWD"
+cdnvm "$PWD" || exit
 ```
 
 This alias would search 'up' from your current directory in order to detect a `.nvmrc` file. If it finds it, it will switch to that version; if not, it will use the default version.
@@ -615,11 +616,14 @@ Put this into your `$HOME/.zshrc` to call `nvm use` automatically whenever you e
 ```zsh
 # place this after nvm initialization!
 autoload -U add-zsh-hook
+
 load-nvmrc() {
-  local nvmrc_path="$(nvm_find_nvmrc)"
+  local nvmrc_path
+  nvmrc_path="$(nvm_find_nvmrc)"
 
   if [ -n "$nvmrc_path" ]; then
-    local nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
+    local nvmrc_node_version
+    nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
 
     if [ "$nvmrc_node_version" = "N/A" ]; then
       nvm install
@@ -631,6 +635,7 @@ load-nvmrc() {
     nvm use default
   fi
 }
+
 add-zsh-hook chpwd load-nvmrc
 load-nvmrc
 ```
@@ -900,7 +905,7 @@ To change the user directory and/or account name follow the instructions [here](
 
 [1]: https://github.com/nvm-sh/nvm.git
 [2]: https://github.com/nvm-sh/nvm/blob/v0.39.3/install.sh
-[3]: https://travis-ci.org/nvm-sh/nvm
+[3]: https://app.travis-ci.com/nvm-sh/nvm
 [4]: https://github.com/nvm-sh/nvm/releases/tag/v0.39.3
 [Urchin]: https://git.sdf.org/tlevine/urchin
 [Fish]: https://fishshell.com

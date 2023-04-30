@@ -163,7 +163,11 @@ nvm_is_version_installed() {
 
 nvm_print_npm_version() {
   if nvm_has "npm"; then
-    command printf " (npm v$(npm --version 2>/dev/null))"
+    local NPM_VERSION
+    NPM_VERSION="$(npm --version 2>/dev/null)"
+    if [ -n "${NPM_VERSION}" ]; then
+      command printf " (npm v${NPM_VERSION})"
+    fi
   fi
 }
 
@@ -418,7 +422,7 @@ nvm_tree_contains_path() {
 nvm_find_project_dir() {
   local path_
   path_="${PWD}"
-  while [ "${path_}" != "" ] && [ ! -f "${path_}/package.json" ] && [ ! -d "${path_}/node_modules" ]; do
+  while [ "${path_}" != "" ] && [ "${path_}" != '.' ] && [ ! -f "${path_}/package.json" ] && [ ! -d "${path_}/node_modules" ]; do
     path_=${path_%/*}
   done
   nvm_echo "${path_}"
@@ -428,7 +432,7 @@ nvm_find_project_dir() {
 nvm_find_up() {
   local path_
   path_="${PWD}"
-  while [ "${path_}" != "" ] && [ ! -f "${path_}/${1-}" ]; do
+  while [ "${path_}" != "" ] && [ "${path_}" != '.' ] && [ ! -f "${path_}/${1-}" ]; do
     path_=${path_%/*}
   done
   nvm_echo "${path_}"
@@ -1068,7 +1072,7 @@ nvm_list_aliases() {
 
   (
     local ALIAS_NAME
-    for ALIAS_NAME in "$(nvm_node_prefix)" "stable" "unstable"; do
+    for ALIAS_NAME in "$(nvm_node_prefix)" "stable" "unstable" "$(nvm_iojs_prefix)"; do
       {
         # shellcheck disable=SC2030,SC2031 # (https://github.com/koalaman/shellcheck/issues/2217)
         if [ ! -f "${NVM_ALIAS_DIR}/${ALIAS_NAME}" ] && { [ -z "${ALIAS}" ] || [ "${ALIAS_NAME}" = "${ALIAS}" ]; }; then
@@ -1077,11 +1081,6 @@ nvm_list_aliases() {
       } &
     done
     wait
-    ALIAS_NAME="$(nvm_iojs_prefix)"
-    # shellcheck disable=SC2030,SC2031 # (https://github.com/koalaman/shellcheck/issues/2217)
-    if [ ! -f "${NVM_ALIAS_DIR}/${ALIAS_NAME}" ] && { [ -z "${ALIAS}" ] || [ "${ALIAS_NAME}" = "${ALIAS}" ]; }; then
-      NVM_NO_COLORS="${NVM_NO_COLORS-}" NVM_CURRENT="${NVM_CURRENT}" nvm_print_default_alias "${ALIAS_NAME}"
-    fi
   ) | sort
 
   (
@@ -1135,7 +1134,7 @@ nvm_ls_current() {
     if [ "${VERSION}" = "v0.6.21-pre" ]; then
       nvm_echo 'v0.6.21'
     else
-      nvm_echo "${VERSION}"
+      nvm_echo "${VERSION:-none}"
     fi
   else
     nvm_echo 'system'
@@ -1376,9 +1375,10 @@ nvm_ls() {
 
   if [ "${NVM_ADD_SYSTEM-}" = true ]; then
     if [ -z "${PATTERN}" ] || [ "${PATTERN}" = 'v' ]; then
-      VERSIONS="${VERSIONS}$(command printf '\n%s' 'system')"
+      VERSIONS="${VERSIONS}
+system"
     elif [ "${PATTERN}" = 'system' ]; then
-      VERSIONS="$(command printf '%s' 'system')"
+      VERSIONS="system"
     fi
   fi
 
@@ -1889,6 +1889,7 @@ nvm_get_arch() {
   local HOST_ARCH
   local NVM_OS
   local EXIT_CODE
+  local LONG_BIT
 
   NVM_OS="$(nvm_get_os)"
   # If the OS is SunOS, first try to use pkgsrc to guess
@@ -1905,6 +1906,7 @@ nvm_get_arch() {
     HOST_ARCH=ppc64
   else
     HOST_ARCH="$(command uname -m)"
+    LONG_BIT="$(getconf LONG_BIT 2>/dev/null)"
   fi
 
   local NVM_ARCH
@@ -1914,6 +1916,12 @@ nvm_get_arch() {
     aarch64) NVM_ARCH="arm64" ;;
     *) NVM_ARCH="${HOST_ARCH}" ;;
   esac
+
+  # If running inside a 32Bit docker container the kernel still is 64bit
+  # change ARCH to 32bit if LONG_BIT is 32
+  if [ "_${LONG_BIT}" = "_32" ] && [ "${NVM_ARCH}" = "x64" ]; then
+    NVM_ARCH="x86"
+  fi
 
   # If running a 64bit ARM kernel but a 32bit ARM userland,
   # change ARCH to 32bit ARM (armv7l) if /sbin/init is 32bit executable
